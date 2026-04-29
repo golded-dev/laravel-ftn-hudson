@@ -11,7 +11,7 @@ function hudsonFixtureBase(): string
         mkdir($path, recursive: true);
     }
 
-    $body = "I want this Hudson body preserved.\r\n";
+    $body = "\x01MSGID: 2:230/150 hudson123\r\nI want this Hudson body preserved.\r\n";
     $recordCount = (int) ceil(strlen($body) / 128);
 
     file_put_contents($path.'/MSGIDX.BBS', pack('vC', 42, 7));
@@ -49,6 +49,17 @@ it('reads real Hudson messages and board metadata', function (): void {
         ->and($first->areaName)->toBe('BOARD7')
         ->and($first->areaSortOrder)->toBe(7)
         ->and($first->areaMetaKey)->toBe('hudson:7');
+});
+
+it('attaches control metadata and provenance', function (): void {
+    $messages = array_values(iterator_to_array(new HudsonReader()->read(hudsonFixtureBase())));
+    $first = firstHudsonMessage($messages);
+
+    expect($first->controlLines?->msgid)->toBe('2:230/150 hudson123')
+        ->and($first->provenance?->sourceType)->toBe('hudson')
+        ->and($first->provenance?->sourcePath)->toEndWith('/MSGTXT.BBS')
+        ->and($first->provenance?->sourceId)->toBe('42')
+        ->and($first->provenance?->sourceOffset)->toBe(0);
 });
 
 /**

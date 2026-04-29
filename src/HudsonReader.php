@@ -6,9 +6,11 @@ namespace Golded\Ftn\Hudson;
 
 use DateTimeImmutable;
 use Golded\Ftn\Contracts\MessageBaseReader;
+use Golded\Ftn\MessageProvenance;
 use Golded\Ftn\ParsedMessage;
 use Golded\Ftn\ReaderOptions;
 use Golded\Ftn\Support\CharsetDetector;
+use Golded\Ftn\Support\ControlLines;
 use Golded\Ftn\Support\Text;
 
 final class HudsonReader implements MessageBaseReader
@@ -41,7 +43,7 @@ final class HudsonReader implements MessageBaseReader
         }
 
         try {
-            yield from $this->readMessages($indexHandle, $headerHandle, $textHandle, $options);
+            yield from $this->readMessages($indexHandle, $headerHandle, $textHandle, $textPath, $options);
         } finally {
             fclose($indexHandle);
             fclose($headerHandle);
@@ -56,7 +58,7 @@ final class HudsonReader implements MessageBaseReader
      *
      * @return iterable<ParsedMessage>
      */
-    private function readMessages($indexHandle, $headerHandle, $textHandle, ReaderOptions $options): iterable
+    private function readMessages($indexHandle, $headerHandle, $textHandle, string $sourcePath, ReaderOptions $options): iterable
     {
         $position = 0;
 
@@ -118,6 +120,13 @@ final class HudsonReader implements MessageBaseReader
                 areaName: $areaCode,
                 areaSortOrder: $board,
                 areaMetaKey: 'hudson:'.$board,
+                controlLines: ControlLines::parseMessage($body),
+                provenance: new MessageProvenance(
+                    sourceType: 'hudson',
+                    sourcePath: $sourcePath,
+                    sourceId: (string) $header['msgno'],
+                    sourceOffset: $header['startrec'] * self::TXT_RECORD,
+                ),
             );
             $position++;
         }
